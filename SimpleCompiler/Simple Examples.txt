@@ -1,0 +1,54 @@
+10 rem  calculate the average of 3 integers
+20 input a
+30 input b
+40 input c
+50 let d = (a + b + c) /3
+60 rem  the average will be printed
+70 print d
+80 end
+
+10 rem enter 7 numbers, and the average will be printed
+15 let c = 7
+18 let b = 0
+20 let c = c - 1
+25 rem  input an integer
+30 input a
+35 let b = b + a
+40 if c == 0 goto 50
+45 goto 20
+50 let c = 7
+55 let a = b / c
+60 rem  print the average
+65 print a
+70 end
+
+10 rem  input the number of test cases, print largest number entered afterword
+15 input a
+20 if a <= 0 goto 80
+30 rem  c will hold the largest number
+35 input c
+45 let a = a - 1
+40 if a == 0 goto 75
+50 input b
+55 if c > b goto 45
+60 let c = b
+65 goto 45
+70 rem  print the largest number
+75 print c
+80 end
+
+10 rem  print the smallest of 10 numbers
+15 let a = 11
+20 let a = a - 1
+25 input b
+30 rem  variable c will hold the smallest number
+35 let c = b
+40 let a = a - 1
+45 if a == 0 goto 75
+50 input b
+55 if b > c goto 40
+60 let c = b
+65 goto 40
+70 rem  printing smallest number
+75 print c
+80 end

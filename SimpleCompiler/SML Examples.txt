@@ -1,0 +1,76 @@
+Use a sentinel-controlled loop to read positive numbers and compute and print their sum. Terminate input when a negative number is entered.		
+Location	SML	Instruction
+00		+1015	Read A
+01		+2015	Load A
+02		+4114	Branch negative to 13
+03		+1016	Read B
+04		+2016	Load B
+05		+4113	Branch negative to 12
+06		+2015	Load A
+07		+3016	Add B
+08		+2115	Store A
+09		+1016	Read B
+10		+2016	Load B
+11		+4113	Branch negative to 13
+12		+4006	Branch to 06
+13		+1115	Write A
+14		+4300	Halt
+15		+0000	Variable A
+16		+0000	Variable B
+
+Use a counter controlled-loop to read seven numbers, some positive and some negative, and compute and print their average.		
+Location	SML	Instruction
+00		+1018	Read A
+01		+2020	Load C
+02		+3121	Subtract D
+03		+2120	Store C
+04		+2018	Load A
+05		+1019	Read B
+06		+3019	Add B
+07		+2118	Store A
+08		+2020	Load C
+09		+4213	Branch 0 to 12
+10		+3121	Subract D
+11		+2120	Store C
+12		+4004	Branch 04
+13		+2018	Load A
+14		+3222	Divide E
+15		+2118	Store A
+16		+1118	Write A
+17		+4300	Halt
+18		+0000	A
+19		+0000	B
+20		+0006	C
+21		+0001	D
+22		+0007	E
+
+Read a series of numbers, and determine and print the largest number. The first number read indicates how many numbers should be processed.		
+Location	SML	Instruction
+00		+1024	Read A
+01		+2024	Load A
+02		+4221	Branch 0 to 21
+03		+3125	Subtract B
+04		+2124	Store A
+05		+1026	Read C
+06		+2026	Load C
+07		+2127	Store Res
+08		+2024	Load A
+09		+4222	Branch 0 to 22
+10		+1026	Read C
+11		+2027	Load Res
+12		+3126	Subtract C
+13		+4115	Branch negative to 15
+14		+4017	Branch to 17
+15		+2026	Load C
+16		+2127	Store Res
+17		+2024	Load A
+18		+3125	Subtract B
+19		+4222	Branch 0 to 22
+20		+2124	Store A
+21		+4010	Branch 10
+22		+1127	Write Res
+23		+4300	Halt
+24		+0000	A
+25		+0001	B
+26		+0000	C
+27		+0000	Res
