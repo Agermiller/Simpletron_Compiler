@@ -32,8 +32,18 @@ private:
 	const char constType;
 	const char variableType;
 	const char lineType;
+	const int smlReadCode;
+	const int smlWriteCode;
+	const int smlLoadCode;
+	const int smlStoreCode;
+	const int smlSubtractCode;
+	const int smlBranchCode;
+	const int smlBranchNegCode;
+	const int smlBranchZeroCode;
+	const int smlHaltCode;
 	map<char, int> operatorMap;
 
+	void addSML(const int&, int&);
 	void tokenizeInput(ifstream&);
 	void lineStore(const string&);
 	void commandStore(const string&, string&);
