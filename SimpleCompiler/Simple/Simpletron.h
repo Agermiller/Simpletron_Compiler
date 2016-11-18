@@ -15,7 +15,7 @@ private:
 	bool ifstreamInitialized;
 	std::string input;
 	int intInput;
-	static const int arraySize = 200;
+	static const int arraySize = 100;
 	int memory [arraySize];
 	int operand; 
 	int accumulator; 

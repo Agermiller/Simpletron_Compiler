@@ -6,7 +6,6 @@
 #include <fstream>
 #include <sstream>
 //#include <iostream>
-//#include <Windows.h>
 #include "TableEntry.h"
 #include "SMLGenerator.h"
 #include "SMLUtilities.h"
@@ -29,7 +28,16 @@ SMLGenerator::SMLGenerator() :
 	evalNextToken(true),
 	constType('C'),
 	variableType('V'),
-	lineType('L')
+	lineType('L'),
+	smlReadCode(10),
+	smlWriteCode(11),
+	smlLoadCode(20),
+	smlStoreCode(21),
+	smlSubtractCode(31),
+	smlBranchCode(40),
+	smlBranchNegCode(41),
+	smlBranchZeroCode(42),
+	smlHaltCode(43)
 {
 	fill(flags, flags + PROGRAMSIZE, -1); //Initialize flags array to -1
 	fill(outputArray, outputArray + PROGRAMSIZE, 0); //Initialize outputArray array to 0
@@ -49,7 +57,16 @@ SMLGenerator::SMLGenerator(ifstream& inputFileStream) :
 	evalNextToken(true),
 	constType('C'),
 	variableType('V'),
-	lineType('L')
+	lineType('L'),
+	smlReadCode(10),
+	smlWriteCode(11),
+	smlLoadCode(20),
+	smlStoreCode(21),
+	smlSubtractCode(31),
+	smlBranchCode(40),
+	smlBranchNegCode(41),
+	smlBranchZeroCode(42),
+	smlHaltCode(43)
 {
 	SymbolTable.resize(PROGRAMSIZE);
 	fill(flags, flags + PROGRAMSIZE, -1); //Initialize flags array to -1
@@ -68,7 +85,7 @@ SMLGenerator::SMLGenerator(ifstream& inputFileStream) :
 void SMLGenerator::SMLGeneratorOutput(ofstream& outFile) const{
 	for (int idx = 0; idx < (sizeof(flags)/sizeof(flags[0])); ++idx){
 		/*I considered using showpos for this, but was getting a strange result for empty 
-		indexes, 00+0 instead of +0000.*/
+		indexes, 00+0 instead of +0000 because of char padding using setfill().*/
 		if (outputArray[idx] >= 0){
 			outFile << "+" << setw(4) << setfill('0') << outputArray[idx] << "\n";
 		}
@@ -149,14 +166,13 @@ void SMLGenerator::commandStore(const string& operation, string& operands){
 		SMLUtilities::trim(operands); //Remove leading white space left by getline
 		operandLocation = searchSymbolTable(operands, variableType);
 		if (operandLocation == -1){
-			/*TableEntry tableentry(operands, variableType, dataCounter);
-			SymbolTable.at(symbolTableIndex++) = tableentry;*/
 			addVarOrConst(operands);
-		}	
-		
-		memoryCheck(instructionCounter, dataCounter);
-		sml = (10*100) + (dataCounter--);
-		outputArray[instructionCounter++] = sml;
+			addSML(smlReadCode, dataCounter);
+			dataCounter--;
+		}
+		else{
+			addSML(smlReadCode, operandLocation);
+		}
 	}
 	#pragma endregion Input	
 	#pragma region Print	
@@ -165,9 +181,7 @@ void SMLGenerator::commandStore(const string& operation, string& operands){
 		operandLocation = searchSymbolTable(operands, variableType);
 
 		if (operandLocation != -1) {
-			memoryCheck(instructionCounter, dataCounter);
-			sml = (11*100)+operandLocation;
-			outputArray[instructionCounter++] = sml;
+			addSML(smlWriteCode, operandLocation);
 		}
 		else{
 			//Fail here. Syntax error, attempting to print undeclared variable
@@ -188,9 +202,7 @@ void SMLGenerator::commandStore(const string& operation, string& operands){
 				operandLocation = 0;
 		}
 		
-		memoryCheck(instructionCounter, dataCounter);
-		sml = (40*100)+operandLocation; //Branch to location
-		outputArray[instructionCounter++] = sml;
+		addSML(smlBranchCode, operandLocation); //Branch to location
 	}
 	#pragma endregion Goto
 	#pragma region If...Goto	
@@ -224,9 +236,7 @@ void SMLGenerator::commandStore(const string& operation, string& operands){
 			addVarOrConst(firstOperand);
 			operandLocation = (dataCounter--);
 		}
-		memoryCheck(instructionCounter, dataCounter);
-		sml = (20*100)+operandLocation; //Load firstOperand
-		outputArray[instructionCounter++] = sml;
+		addSML(smlLoadCode, operandLocation); //Load firstOperand
 
 		//Search for second operand. If it doesnt exist, then create it.
 		operandLocation = searchSymbolTable(secondOperand);
@@ -234,9 +244,7 @@ void SMLGenerator::commandStore(const string& operation, string& operands){
 			addVarOrConst(secondOperand);
 			operandLocation = (dataCounter--);
 		}
-		memoryCheck(instructionCounter, dataCounter);
-		sml = (31*100)+operandLocation; //Subtract secondOperand
-		outputArray[instructionCounter++] = sml;
+		addSML(smlSubtractCode, operandLocation); //Subtract secondOperand
 
 		/*Generate SML to Branch 0*/
 		if (compareOperator == eqOper){
@@ -246,16 +254,13 @@ void SMLGenerator::commandStore(const string& operation, string& operands){
 				flags[instructionCounter] = stoi(branchLocation);
 				operandLocation = 0;
 			}
-			memoryCheck(instructionCounter, dataCounter);
-			sml = (42*100)+operandLocation; //Branch zero to location
-			outputArray[instructionCounter++] = sml;
-
+			addSML(smlBranchZeroCode, operandLocation); //Branch zero to location
 		}
 		/*Generate SML to Branch negative*/
 		else if (compareOperator == ltOper || compareOperator == lteOper){
 
 			/*BEGIN lteOper Addition*/
-			/*If operator is lteOper, then generate an extra SML line to Branch 0*/
+			/*If operator is <, then generate an extra SML line to Branch 0*/
 			//Search for branch location
 			if (compareOperator == lteOper)
 				operandLocation = searchSymbolTable(branchLocation, lineType);{
@@ -263,10 +268,7 @@ void SMLGenerator::commandStore(const string& operation, string& operands){
 					flags[instructionCounter] = stoi(branchLocation);
 					operandLocation = 0;
 				}
-			
-				memoryCheck(instructionCounter, dataCounter);
-				sml = (42*100)+operandLocation; //Branch zero to location
-				outputArray[instructionCounter++] = sml;
+				addSML(smlBranchZeroCode, operandLocation); //Branch zero to location
 			}
 			/*END lteOper Addition*/
 
@@ -275,10 +277,7 @@ void SMLGenerator::commandStore(const string& operation, string& operands){
 				flags[instructionCounter] = stoi(branchLocation);
 				operandLocation = 0;
 			}
-
-			memoryCheck(instructionCounter, dataCounter);
-			sml = (41*100)+operandLocation; //Branch neg to location
-			outputArray[instructionCounter++] = sml;
+			addSML(smlBranchNegCode, operandLocation); //Branch neg to location
 		}
 		/*Generate SML to Branch negative and Branch */
 		else if (compareOperator == gtOper || compareOperator == gteOper){
@@ -292,16 +291,11 @@ void SMLGenerator::commandStore(const string& operation, string& operands){
 					flags[instructionCounter] = stoi(branchLocation);
 					operandLocation = 0;
 				}
-			
-				memoryCheck(instructionCounter, dataCounter);
-				sml = (42*100)+operandLocation; //Branch zero to location
-				outputArray[instructionCounter++] = sml;
+				addSML(smlBranchZeroCode, operandLocation); //Branch zero to location
 			}
 			/*END <= Addition*/
-			
-			memoryCheck(instructionCounter, dataCounter);
-			sml = (41*100)+0; //Branch neg to location 2 places away (instructionCounter+2)
-			outputArray[instructionCounter++] = sml;
+			int zero = 0;
+			addSML(smlBranchNegCode, zero); //Branch neg to location 2 places away (instructionCounter+2)
 
 			//Search for branch location
 			operandLocation = searchSymbolTable(branchLocation, lineType);
@@ -309,10 +303,7 @@ void SMLGenerator::commandStore(const string& operation, string& operands){
 				flags[instructionCounter] = stoi(branchLocation);
 				operandLocation = 0;
 			}
-
-			memoryCheck(instructionCounter, dataCounter);
-			sml = (40*100)+operandLocation; //Branch neg to location
-			outputArray[instructionCounter++] = sml;
+			addSML(smlBranchCode, operandLocation); //Branch to location
 
 			outputArray[instructionCounter-2] += instructionCounter; //Setting branch location for branch neg command
 		}
@@ -324,9 +315,8 @@ void SMLGenerator::commandStore(const string& operation, string& operands){
 	#pragma endregion If...Goto
 	#pragma region End	
 	else if (operation == "end"){
-		memoryCheck(instructionCounter, dataCounter);
-		sml = (43*100);
-		outputArray[instructionCounter++] = sml;
+		int zero = 0;
+		addSML(smlHaltCode, zero);
 	}
 	#pragma endregion End	
 	else {//fail here
@@ -336,10 +326,10 @@ void SMLGenerator::commandStore(const string& operation, string& operands){
 
 
 int SMLGenerator::searchSymbolTable(const string& str){
-	size_t stSize = SymbolTable.size();
-	for (size_t i = 0; i < stSize; i++){
-		if (SymbolTable.at(i).getSymbol() == str){
-			return SymbolTable.at(i).getLocation();
+	vector<TableEntry>::iterator it;
+	for (it = SymbolTable.begin(); it != SymbolTable.end(); ++it){
+		if (it->getSymbol() == str){
+			return it->getLocation();
 		}
 	}
 	return -1;
@@ -347,10 +337,10 @@ int SMLGenerator::searchSymbolTable(const string& str){
 
 /*Overloaded to specify the symbol type*/
 int SMLGenerator::searchSymbolTable(const string& str, const char& type){
-	size_t stSize = SymbolTable.size();
-	for (size_t i = 0; i < stSize; i++){
-		if (SymbolTable.at(i).getSymbol() == str && SymbolTable.at(i).getType() == type){
-			return SymbolTable.at(i).getLocation();
+	vector<TableEntry>::iterator it;
+	for (it = SymbolTable.begin(); it != SymbolTable.end(); ++it){
+		if (it->getSymbol() == str && it->getType() == type){
+			return it->getLocation();
 		}
 	}
 	return -1;
@@ -358,10 +348,10 @@ int SMLGenerator::searchSymbolTable(const string& str, const char& type){
 
 /*Overloaded to specify the symbol type*/
 int SMLGenerator::searchSymbolTable(const string& str, const char& typeA, const char& typeB){
-	size_t stSize = SymbolTable.size();
-	for (size_t i = 0; i < stSize; i++){
-		if (SymbolTable.at(i).getSymbol() == str && (SymbolTable.at(i).getType() == typeA || SymbolTable.at(i).getType() == typeB)){
-			return SymbolTable.at(i).getLocation();
+	vector<TableEntry>::iterator it;
+	for (it = SymbolTable.begin(); it != SymbolTable.end(); ++it){
+		if (it->getSymbol() == str && (it->getType() == typeA || it->getType() == typeB)){
+			return it->getLocation();
 		}
 	}
 	return -1;
@@ -405,7 +395,7 @@ void SMLGenerator::evaluateLetStatement (string& operands, int& operandLocation,
 		expression >> eqOper; 
 		getline(expression,  arithmeticExp); //Get remainder of input string
 
-		if (SMLUtilities::IsIntConstant(lVar)){
+		if (!isalpha(lVar.at(0))){
 			SMLUtilities::terminate("'Let' statement must use a valid l-variable.");
 		}
 		if (eqOper != "="){
@@ -436,7 +426,7 @@ void SMLGenerator::evaluateLetStatement (string& operands, int& operandLocation,
 			addVarOrConst(lVar);
 			operandLocation = (dataCounter--);
 		}
-
+		
 		/*Scan through the arithmetic string and confirm whether the variables or constants exist in
 		the symbol table, or need to be added.*/
 		while (!varorconst.eof()){
@@ -470,20 +460,15 @@ void SMLGenerator::evaluateLetStatement (string& operands, int& operandLocation,
 			if (isdigit(word.at(0)) || isalpha(word.at(0))){
 				//Load the variable or constant 
 				tempOpLocation = searchSymbolTable(word, variableType, constType);
-				memoryCheck(instructionCounter, dataCounter);
-				sml = (20*100)+tempOpLocation;
-				outputArray[instructionCounter++] = sml;
+
+				addSML(smlLoadCode, tempOpLocation);
 
 				//Then Store it in the l-variable
-				memoryCheck(instructionCounter, dataCounter);
-				sml = (21*100)+operandLocation;
-				outputArray[instructionCounter++] = sml;
+				addSML(smlStoreCode, operandLocation);
 			}
 			else{
 				SMLUtilities::terminate("Invalid syntax in let statement. Operator is not followed by a valid constant or variable.");
-			}
-
-			
+			}	
 		}
 		/*Else, evaluate the expression. Example: let a = 5 + b*/
 		else{
@@ -502,32 +487,25 @@ void SMLGenerator::evaluateLetStatement (string& operands, int& operandLocation,
 					postfixStack.pop();
 								
 					//Generate load instruction
-					memoryCheck(instructionCounter, dataCounter);
-					sml = (20*100)+stoi(postfixStack.top()); 
-					outputArray[instructionCounter++] = sml;
+					int loc = stoi(postfixStack.top());
+					addSML(smlLoadCode, loc);
 					postfixStack.pop();				
 
 					//Generate the arithmetic command
 					int operationCode = operatorMap[word.at(0)];
-					memoryCheck(instructionCounter, dataCounter);
-					sml = (operationCode*100)+stoi(firstOperand);
-					outputArray[instructionCounter++] = sml;
+					loc = stoi(firstOperand);
+					addSML(operationCode, loc);
 
 					/*Push the temporary variable on to the stack and store it in a temporary variable location, 
 					unless this is the final instruction from the stream.
 					If that is the case, then store the result in the variable's memory location.*/
 					if (exp.peek() == EOF){
 						//Last SML statement should be 'Store (21) accumulator into operandLocation'
-						memoryCheck(instructionCounter, dataCounter);
-						sml = (21*100)+operandLocation;
-						outputArray[instructionCounter++] = sml;
+						addSML(smlStoreCode, operandLocation);
 					}
 					else{
 						//Generate Store instruction
-						memoryCheck(instructionCounter, dataCounter);
-						sml = (21*100) + dataCounter;
-						outputArray[instructionCounter++] = sml;
-
+						addSML(smlStoreCode, dataCounter);
 						stringstream s;
 						s << dataCounter--;
 						postfixStack.push(s.str());
@@ -540,8 +518,12 @@ void SMLGenerator::evaluateLetStatement (string& operands, int& operandLocation,
 		no temporary memory slots were used during evaluation, so there is nothing to reclaim.*/
 		if (operatorCount > 1){
 			dataCounter = dataCounter + (operatorCount-1);
-		}
-		
-		
+		}		
 }
 #pragma endregion EvalLet
+
+void SMLGenerator::addSML(const int& operationCode, int& memLocation){
+	memoryCheck(instructionCounter, dataCounter);
+	int sml = (operationCode*100) + (memLocation);
+	outputArray[instructionCounter++] = sml;
+}
