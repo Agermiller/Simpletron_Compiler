@@ -1,6 +1,6 @@
 # Simpletron_Compiler
 
-The code you see is my take on a two part problem from Deitel's C++ Programming book. Programs written in a programming language called 'Simple' will be converted to Simple Machine Language (SML) and executed.
+The code you see is my take on a two part problem from Deitel's C++ Programming book. Programs written in a programming language called 'Simple' will be converted to Simple Machine Language (SML) and executed. This project is not a true compiler but a virtual one, since the machine language code is not actually commanding any harware directly, but is instead using C++.
 
 ##Part 1
 
