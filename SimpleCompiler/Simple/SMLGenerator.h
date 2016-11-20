@@ -55,6 +55,7 @@ private:
 	void terminate(const string&);
 	void postfixEval(string&);
 	void evaluateLetStatement (string&, int&, int&);
+	void evaluateIfGotoStatement (string&, int&, int&);
 };
 
 #endif
