@@ -43,7 +43,7 @@ SMLGenerator::SMLGenerator() :
 	fill(outputArray, outputArray + PROGRAMSIZE, 0); //Initialize outputArray array to 0
 }
 
-//Custom constructor behaves the same as the default constructor, but also initializes the ifstream object
+//Custom constructor behaves the same as the default constructor, but also passes the ifstream object to tokenizeInput()
 SMLGenerator::SMLGenerator(ifstream& inputFileStream) :
 	pass(1),
 	instructionCounter(0),
@@ -123,13 +123,18 @@ void SMLGenerator::tokenizeInput(ifstream& inputFileStream){
 	}//end while (!inputFileStream.eof())
 
 	//Perform second pass		
-	for (size_t idx = 0; idx < (sizeof(flags)/sizeof(flags[0])); ++idx){
+	for (size_t idx = 0; idx < PROGRAMSIZE; ++idx){
 		if (flags[idx] != -1){
 			//Convert flags element to string and search the symbol table for its location
 			int flagLocation;
 			ostringstream elementVal;
 			elementVal << flags[idx];
-			flagLocation = searchSymbolTable(elementVal.str());
+			flagLocation = searchSymbolTable(elementVal.str(), lineType);
+
+			if (flagLocation == -1){
+				SMLUtilities::terminate("Syntax error. "
+					"\nThe line number following a 'goto' statement must be a line currently present in the program.");
+			}
 
 			outputArray[idx] += flagLocation;
 		}
@@ -158,12 +163,23 @@ void SMLGenerator::lineStore(const string& line){
 	SymbolTable.at(symbolTableIndex++) = tableentry;
 }
 
+void SMLGenerator::addSML(const int& operationCode, int& memLocation){
+	memoryCheck(instructionCounter, dataCounter);
+	int sml = (operationCode*100) + (memLocation);
+	outputArray[instructionCounter++] = sml;
+}
+
 void SMLGenerator::commandStore(const string& operation, string& operands){
 	int sml;
 	int operandLocation;
 	#pragma region Input	
 	if (operation == "input"){
 		SMLUtilities::trim(operands); //Remove leading white space left by getline
+		/*Confirm variable is only alpha*/
+		if (!SMLUtilities::IsStrAlpha(operands)){
+			SMLUtilities::terminate("Syntax error. \nVariable name in 'input' must include only alphabetical characters.");
+		}
+
 		operandLocation = searchSymbolTable(operands, variableType);
 		if (operandLocation == -1){
 			addVarOrConst(operands);
@@ -178,6 +194,11 @@ void SMLGenerator::commandStore(const string& operation, string& operands){
 	#pragma region Print	
 	else if (operation == "print"){
 		SMLUtilities::trim(operands); //Remove leading white space left by getline
+		/*Confirm variable is only alpha*/
+		if (!SMLUtilities::IsStrAlpha(operands)){
+			SMLUtilities::terminate("Syntax error. \nVariable name in 'print' must include only alphabetical characters.");
+		}
+
 		operandLocation = searchSymbolTable(operands, variableType);
 
 		if (operandLocation != -1) {
@@ -196,6 +217,11 @@ void SMLGenerator::commandStore(const string& operation, string& operands){
 	#pragma endregion Let
 	#pragma region Goto	
 	else if (operation == "goto"){
+		SMLUtilities::trim(operands);
+		if (!SMLUtilities::IsIntConstant(operands)){
+			SMLUtilities::terminate("Syntax error. \n'Goto' statement requires a valid line number.");
+		}
+
 		operandLocation = searchSymbolTable(operands, lineType);
 		if (operandLocation == -1){ //Flag forward reference
 			flags[instructionCounter] = stoi(operands);
@@ -207,110 +233,7 @@ void SMLGenerator::commandStore(const string& operation, string& operands){
 	#pragma endregion Goto
 	#pragma region If...Goto	
 	else if (operation == "if"){
-		/*Take the rest of the string, break it at the comparison sign, convert to int,
-		Generate SML accordingly*/
-		stringstream expression(operands);
-		string firstOperand, compareOperator, secondOperand, branchCommand, branchLocation;
-		expression >> firstOperand;
-		expression >> compareOperator;
-		expression >> secondOperand;
-		expression >> branchCommand;
-		expression >> branchLocation;
-
-		if (branchCommand != "goto" || !SMLUtilities::IsIntConstant(branchLocation)){
-			SMLUtilities::terminate("Syntax error: \n'If' statement must include 'goto' command and a valid line number.");
-		}
-
-		string ltOper = "<";
-		string gtOper = ">";
-		string lteOper = "<=";
-		string gteOper = ">=";
-		string eqOper = "==";
-
-		/*Generate SML to Load a and Subtract b. 
-		Then complete the SML based on which comparison operator is used.*/
-
-		//Search for first operand. If it doesnt exist, then create it.
-		operandLocation = searchSymbolTable(firstOperand);
-		if (operandLocation == -1){
-			addVarOrConst(firstOperand);
-			operandLocation = (dataCounter--);
-		}
-		addSML(smlLoadCode, operandLocation); //Load firstOperand
-
-		//Search for second operand. If it doesnt exist, then create it.
-		operandLocation = searchSymbolTable(secondOperand);
-		if (operandLocation == -1){
-			addVarOrConst(secondOperand);
-			operandLocation = (dataCounter--);
-		}
-		addSML(smlSubtractCode, operandLocation); //Subtract secondOperand
-
-		/*Generate SML to Branch 0*/
-		if (compareOperator == eqOper){
-			//Search for branch location or forward reference.
-			operandLocation = searchSymbolTable(branchLocation, lineType);
-			if (operandLocation == -1){ //Record the forward reference
-				flags[instructionCounter] = stoi(branchLocation);
-				operandLocation = 0;
-			}
-			addSML(smlBranchZeroCode, operandLocation); //Branch zero to location
-		}
-		/*Generate SML to Branch negative*/
-		else if (compareOperator == ltOper || compareOperator == lteOper){
-
-			/*BEGIN lteOper Addition*/
-			/*If operator is <, then generate an extra SML line to Branch 0*/
-			//Search for branch location
-			if (compareOperator == lteOper)
-				operandLocation = searchSymbolTable(branchLocation, lineType);{
-				if (operandLocation == -1){ //Record the forward reference
-					flags[instructionCounter] = stoi(branchLocation);
-					operandLocation = 0;
-				}
-				addSML(smlBranchZeroCode, operandLocation); //Branch zero to location
-			}
-			/*END lteOper Addition*/
-
-			operandLocation = searchSymbolTable(branchLocation, lineType);
-			if (operandLocation == -1){ //Record the forward reference
-				flags[instructionCounter] = stoi(branchLocation);
-				operandLocation = 0;
-			}
-			addSML(smlBranchNegCode, operandLocation); //Branch neg to location
-		}
-		/*Generate SML to Branch negative and Branch */
-		else if (compareOperator == gtOper || compareOperator == gteOper){
-
-			/*BEGIN >= Addition*/
-			/*If operator is >=, then generate an extra SML line to Branch 0*/
-			//Search for branch location
-			if (compareOperator == gteOper){
-				operandLocation = searchSymbolTable(branchLocation, lineType);
-				if (operandLocation == -1){ //Record the forward reference
-					flags[instructionCounter] = stoi(branchLocation);
-					operandLocation = 0;
-				}
-				addSML(smlBranchZeroCode, operandLocation); //Branch zero to location
-			}
-			/*END <= Addition*/
-			int zero = 0;
-			addSML(smlBranchNegCode, zero); //Branch neg to location 2 places away (instructionCounter+2)
-
-			//Search for branch location
-			operandLocation = searchSymbolTable(branchLocation, lineType);
-			if (operandLocation == -1){ //Record the forward reference
-				flags[instructionCounter] = stoi(branchLocation);
-				operandLocation = 0;
-			}
-			addSML(smlBranchCode, operandLocation); //Branch to location
-
-			outputArray[instructionCounter-2] += instructionCounter; //Setting branch location for branch neg command
-		}
-		else{
-			//Fail here. Syntax error, invalid operator. Consider adding >= and <=
-			SMLUtilities::terminate("Invalid comparison operator. Only operators < <= == >= > are accepted");
-		}
+		evaluateIfGotoStatement (operands, operandLocation, sml);
 	}
 	#pragma endregion If...Goto
 	#pragma region End	
@@ -320,10 +243,9 @@ void SMLGenerator::commandStore(const string& operation, string& operands){
 	}
 	#pragma endregion End	
 	else {//fail here
-		SMLUtilities::terminate("Invalid instruction.");
+		SMLUtilities::terminate("Syntax error. \nInvalid instruction keyword.");
 	}
 }
-
 
 int SMLGenerator::searchSymbolTable(const string& str){
 	vector<TableEntry>::iterator it;
@@ -374,7 +296,7 @@ void SMLGenerator::addVarOrConst(string& operand){
 //the output array, and the program must be terminated.
 void SMLGenerator::memoryCheck(const int& iCtr, const int& dCtr){
 	if (iCtr >= dCtr){
-		SMLUtilities::terminate("Generated SML instructions exceed the allocated buffer size. \nConsider shortening the program.");
+		SMLUtilities::terminate("Runtime error. \nGenerated SML instructions exceed the allocated buffer size. \nConsider shortening the program.");
 	}
 }
 
@@ -396,10 +318,10 @@ void SMLGenerator::evaluateLetStatement (string& operands, int& operandLocation,
 		getline(expression,  arithmeticExp); //Get remainder of input string
 
 		if (!isalpha(lVar.at(0))){
-			SMLUtilities::terminate("'Let' statement must use a valid l-variable.");
+			SMLUtilities::terminate("Syntax error. \n'Let' statement must use a valid l-variable.");
 		}
 		if (eqOper != "="){
-			SMLUtilities::terminate("Syntax error. Assignment operator must follow the l-variable in 'let' statements.");
+			SMLUtilities::terminate("Syntax error. \nAssignment operator must follow the l-variable in 'let' statements.");
 		}
 
 		try{
@@ -522,8 +444,112 @@ void SMLGenerator::evaluateLetStatement (string& operands, int& operandLocation,
 }
 #pragma endregion EvalLet
 
-void SMLGenerator::addSML(const int& operationCode, int& memLocation){
-	memoryCheck(instructionCounter, dataCounter);
-	int sml = (operationCode*100) + (memLocation);
-	outputArray[instructionCounter++] = sml;
+#pragma region EvalIf...Goto
+void SMLGenerator::evaluateIfGotoStatement (string& operands, int& operandLocation, int& sml){
+	/*Take the rest of the string, break it at the comparison sign, convert to int,
+	Generate SML accordingly*/
+	stringstream expression(operands);
+	string firstOperand, compareOperator, secondOperand, branchCommand, branchLocation;
+	expression >> firstOperand;
+	expression >> compareOperator;
+	expression >> secondOperand;
+	expression >> branchCommand;
+	expression >> branchLocation;
+
+	if (branchCommand != "goto" || !SMLUtilities::IsIntConstant(branchLocation)){
+		SMLUtilities::terminate("Syntax error: \n'If' statement must include 'goto' command and a valid line number.");
+	}
+
+	string ltOper = "<";
+	string gtOper = ">";
+	string lteOper = "<=";
+	string gteOper = ">=";
+	string eqOper = "==";
+
+	/*Generate SML to Load a and Subtract b. 
+	Then complete the SML based on which comparison operator is used.*/
+
+	//Search for first operand. If it doesnt exist, then create it.
+	operandLocation = searchSymbolTable(firstOperand);
+	if (operandLocation == -1){
+		addVarOrConst(firstOperand);
+		operandLocation = (dataCounter--);
+	}
+	addSML(smlLoadCode, operandLocation); //Load firstOperand
+
+	//Search for second operand. If it doesnt exist, then create it.
+	operandLocation = searchSymbolTable(secondOperand);
+	if (operandLocation == -1){
+		addVarOrConst(secondOperand);
+		operandLocation = (dataCounter--);
+	}
+	addSML(smlSubtractCode, operandLocation); //Subtract secondOperand
+
+	/*Generate SML to Branch 0*/
+	if (compareOperator == eqOper){
+		//Search for branch location or forward reference.
+		operandLocation = searchSymbolTable(branchLocation, lineType);
+		if (operandLocation == -1){ //Record the forward reference
+			flags[instructionCounter] = stoi(branchLocation);
+			operandLocation = 0;
+		}
+		addSML(smlBranchZeroCode, operandLocation); //Branch zero to location
+	}
+	/*Generate SML to Branch negative*/
+	else if (compareOperator == ltOper || compareOperator == lteOper){
+
+		/*BEGIN lteOper Addition*/
+		/*If operator is <, then generate an extra SML line to Branch 0*/
+		//Search for branch location
+		if (compareOperator == lteOper)
+			operandLocation = searchSymbolTable(branchLocation, lineType);{
+			if (operandLocation == -1){ //Record the forward reference
+				flags[instructionCounter] = stoi(branchLocation);
+				operandLocation = 0;
+			}
+			addSML(smlBranchZeroCode, operandLocation); //Branch zero to location
+		}
+		/*END lteOper Addition*/
+
+		operandLocation = searchSymbolTable(branchLocation, lineType);
+		if (operandLocation == -1){ //Record the forward reference
+			flags[instructionCounter] = stoi(branchLocation);
+			operandLocation = 0;
+		}
+		addSML(smlBranchNegCode, operandLocation); //Branch neg to location
+	}
+	/*Generate SML to Branch negative and Branch */
+	else if (compareOperator == gtOper || compareOperator == gteOper){
+
+		/*BEGIN >= Addition*/
+		/*If operator is >=, then generate an extra SML line to Branch 0*/
+		//Search for branch location
+		if (compareOperator == gteOper){
+			operandLocation = searchSymbolTable(branchLocation, lineType);
+			if (operandLocation == -1){ //Record the forward reference
+				flags[instructionCounter] = stoi(branchLocation);
+				operandLocation = 0;
+			}
+			addSML(smlBranchZeroCode, operandLocation); //Branch zero to location
+		}
+		/*END <= Addition*/
+		int zero = 0;
+		addSML(smlBranchNegCode, zero); //Branch neg to location 2 places away (instructionCounter+2)
+
+		//Search for branch location
+		operandLocation = searchSymbolTable(branchLocation, lineType);
+		if (operandLocation == -1){ //Record the forward reference
+			flags[instructionCounter] = stoi(branchLocation);
+			operandLocation = 0;
+		}
+		addSML(smlBranchCode, operandLocation); //Branch to location
+
+		outputArray[instructionCounter-2] += instructionCounter; //Setting branch location for branch neg command
+	}
+	else{
+		//Fail here. Syntax error, invalid operator. Consider adding >= and <=
+		SMLUtilities::terminate("Syntax error. \nInvalid comparison operator. Only operators < <= == >= > are accepted.");
+	}
 }
+#pragma endregion EvalIf...Goto
+
