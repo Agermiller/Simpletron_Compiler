@@ -5,14 +5,25 @@
 
 using namespace std;
 
+/*Could use isdigit, but this function handles the whole string rather than just one character*/
 bool SMLUtilities::IsIntConstant(string& str){
-	try{
-		int constant = stoi(str);
-		return true;
+	int strLength = str.length();
+	for (int i = 0; i < strLength; ++i){
+		if (!isdigit(str.at(i))){
+			return false;
+		}
 	}
-	catch(std::invalid_argument&){
-		return false;
+	return true;
+}
+
+bool SMLUtilities::IsStrAlpha(const string& str){
+	int strLength = str.length();
+	for (int i = 0; i < strLength; ++i){
+		if (!isalpha(str.at(i))){
+			return false;
+		}
 	}
+	return true;
 }
 
 void SMLUtilities::trim(string& str){
