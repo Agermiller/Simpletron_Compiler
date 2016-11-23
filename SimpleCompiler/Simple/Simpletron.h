@@ -32,6 +32,8 @@ private:
 	static int subtract(int&, int&, int*, bool&);
 	static int divide(int&, int&, int*, bool&);
 	static int multiply(int&, int&, int*, bool&);
+	static int modulus(int&, int&, int*, bool&);
+	static int power(int&, int&, int*, bool&);
 	static void branch(int&, int&, bool&);
 	static bool branchNeg(int&, int&, int&, bool&);
 	static bool branchZero(int&, int&, int&, bool&);
