@@ -18,6 +18,7 @@ typedef map<char, int> opMap;
 SMLGenerator::SMLGenerator() :
 	pass(1),
 	instructionCounter(0),
+	maxLineNumber(0),
 	symbolTableIndex(0),
 	dataCounter(PROGRAMSIZE-1),
 	lineVar(""),
@@ -47,6 +48,7 @@ SMLGenerator::SMLGenerator() :
 SMLGenerator::SMLGenerator(ifstream& inputFileStream) :
 	pass(1),
 	instructionCounter(0),
+	maxLineNumber(0),
 	symbolTableIndex(0),
 	dataCounter(PROGRAMSIZE-1),
 	lineVar(""),
@@ -74,8 +76,8 @@ SMLGenerator::SMLGenerator(ifstream& inputFileStream) :
 
 	operatorMap.insert(opMap::value_type('*',33));
 	operatorMap.insert(opMap::value_type('/',32));
-	//operatorMap.insert(opMap::value_type('%',2)); //Currently Not Supported
-	//operatorMap.insert(opMap::value_type('^',2)); //Currently Not Supported
+	operatorMap.insert(opMap::value_type('%',34)); 
+	operatorMap.insert(opMap::value_type('^',35)); 
 	operatorMap.insert(opMap::value_type('+',30));
 	operatorMap.insert(opMap::value_type('-',31));
 
@@ -159,8 +161,18 @@ void SMLGenerator::tokenizeInput(ifstream& inputFileStream){
 
 
 void SMLGenerator::lineStore(const string& line){
+
+	if (!SMLUtilities::IsIntConstant(line)){
+		SMLUtilities::terminate("Syntax error. \nA line number must be an integer.");
+	}
+	else if(stoi(line) < 0 || stoi(line) < maxLineNumber){
+		SMLUtilities::terminate("Syntax error. \nLine numbers must be positive and in ascending order.");
+	}
+
 	TableEntry tableentry(line, lineType, instructionCounter);
 	SymbolTable.at(symbolTableIndex++) = tableentry;
+
+	maxLineNumber = stoi(line);
 }
 
 void SMLGenerator::addSML(const int& operationCode, int& memLocation){
