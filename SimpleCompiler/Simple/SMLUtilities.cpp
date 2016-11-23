@@ -6,9 +6,16 @@
 using namespace std;
 
 /*Could use isdigit, but this function handles the whole string rather than just one character*/
-bool SMLUtilities::IsIntConstant(string& str){
+bool SMLUtilities::IsIntConstant(const string& str){
 	int strLength = str.length();
-	for (int i = 0; i < strLength; ++i){
+	int i = 0;
+
+	/*If first character is a negative sign, then ignore it and proceed*/
+	if (str.at(i) == '-'){
+		++i;
+	}
+
+	for (i; i < strLength; ++i){
 		if (!isdigit(str.at(i))){
 			return false;
 		}
@@ -66,12 +73,12 @@ bool SMLUtilities::isoperator (const char& c, const bool& nonPar){
 	case '/':
 		return true;
 		break;
-	//case '^': //Currently Not Supported
-	//	return true;
-	//	break;
-	//case '%': //Currently Not Supported
-	//	return true;
-	//	break;
+	case '^': 
+		return true;
+		break;
+	case '%': 
+		return true;
+		break;
 	default:
 		return false;
 		break;
@@ -91,12 +98,12 @@ bool SMLUtilities::isoperator (const char& c, const bool& nonPar){
 	case '/':
 		return true;
 		break;
-	//case '^': //Currently Not Supported
-	//	return true;
-	//	break;
-	//case '%': //Currently Not Supported
-	//	return true;
-	//	break;
+	case '^': 
+		return true;
+		break;
+	case '%': 
+		return true;
+		break;
 	case '(':
 		return true;
 		break;
