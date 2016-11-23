@@ -1,3 +1,4 @@
+#include <math.h>
 #include <string>
 #include <fstream>
 #include <iomanip>
@@ -10,7 +11,7 @@
 using namespace std;
 
 Simpletron::Simpletron():
-	input ( ""),
+	input (""),
 	intInput (0),
 	operand (0), //Indicate the memory location on which the current instruction operates
 	accumulator (0), //Represent the accumulator register
@@ -25,7 +26,7 @@ Simpletron::Simpletron():
 
 /*Is just like the default constructor, but initializes the ifstream object*/
 Simpletron::Simpletron(const string& smlPath):
-	input ( ""),
+	input (""),
 	intInput (0),
 	operand (0), //Indicate the memory location on which the current instruction operates
 	accumulator (0), //Represent the accumulator register
@@ -135,6 +136,16 @@ void Simpletron::Execute(){
 			++instructionCounter;
 			break;
 
+		case 34:
+			accumulator = Simpletron::modulus(accumulator, operand, memory, logDetail);
+			++instructionCounter;
+			break;
+
+		case 35:
+			accumulator = Simpletron::power(accumulator, operand, memory, logDetail);
+			++instructionCounter;
+			break;
+
 		case 40:
 			Simpletron::branch(operand, instructionCounter, logDetail);
 			break;
@@ -212,7 +223,7 @@ void Simpletron::store(int& accumulator, int& operand, int* memory, bool& logDet
 
 int Simpletron::add(int& accumulator, int& operand, int* memory, bool& logDetail){
 	if (logDetail){
-		cout << "DEBUG: Number added = " << accumulator + memory[operand] << endl;
+		cout << "DEBUG: Number added = " << memory[operand] << endl;
 	}
 
 	return accumulator + memory[operand];
@@ -220,7 +231,7 @@ int Simpletron::add(int& accumulator, int& operand, int* memory, bool& logDetail
 
 int Simpletron::subtract(int& accumulator, int& operand, int* memory, bool& logDetail){
 	if (logDetail){
-		cout << "DEBUG: Number subtracted = " << operand << endl;
+		cout << "DEBUG: Number subtracted = " << memory[operand] << endl;
 	}
 
 	return accumulator - memory[operand];
@@ -242,10 +253,26 @@ int Simpletron::divide(int& accumulator, int& operand, int* memory, bool& logDet
 
 int Simpletron::multiply(int& accumulator, int& operand, int* memory, bool& logDetail){
 	if (logDetail){
-		cout << "DEBUG: Number multiplied = " << operand << endl;
+		cout << "DEBUG: Number multiplied = " << memory[operand] << endl;
 	}
 
 	return accumulator * memory[operand];
+}
+
+int Simpletron::modulus(int& accumulator, int& operand, int* memory, bool& logDetail){
+	if (logDetail){
+		cout << "DEBUG: Number modulated = " << memory[operand] << endl;
+	}
+
+	return accumulator % memory[operand];
+}
+
+int Simpletron::power(int& accumulator, int& operand, int* memory, bool& logDetail){
+	if (logDetail){
+		cout << "DEBUG: Exponent = " << memory[operand] << endl;
+	}
+
+	return int(pow(double(accumulator), memory[operand]));
 }
 
 void Simpletron::branch(int& operand, int& instructionCounter, bool& logDetail){
