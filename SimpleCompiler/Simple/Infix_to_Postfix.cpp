@@ -23,8 +23,8 @@ string Infix_to_Postfix::generatePostfix(string infix){
 	/*Operators (keys) with a higher value have a higher precedence*/
 	precedence.insert(oMap::value_type('*',2));
 	precedence.insert(oMap::value_type('/',2));
-	//precedence.insert(oMap::value_type('%',2)); //Currently Not Supported
-	//precedence.insert(oMap::value_type('^',2)); //Currently Not Supported
+	precedence.insert(oMap::value_type('%',2));
+	precedence.insert(oMap::value_type('^',2));
 	precedence.insert(oMap::value_type('+',1));
 	precedence.insert(oMap::value_type('-',1));
 

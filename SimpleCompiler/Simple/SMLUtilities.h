@@ -5,7 +5,7 @@
 
 class SMLUtilities{
 public:
-	static bool IsIntConstant(std::string&);
+	static bool IsIntConstant(const std::string&);
 	static bool IsStrAlpha(const std::string&);
 	static void trim(std::string&);
 	static std::string addSpace(std::string&);

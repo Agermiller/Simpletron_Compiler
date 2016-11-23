@@ -28,6 +28,7 @@ private:
 	string operandsVar;
 	string input;
 	int tokenCtr;
+	int maxLineNumber;
 	bool evalNextToken;
 	const char constType;
 	const char variableType;
