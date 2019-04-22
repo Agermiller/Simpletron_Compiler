@@ -2,7 +2,7 @@
 
 The code you see is my take on a two part problem from Deitel's C++ Programming book. Programs written in a programming language called 'Simple' will be converted to Simple Machine Language (SML) and executed. This project is not a true compiler but a virtual one, since the machine language code is not actually commanding any harware directly, but is instead using C++.
 
-##Part 1
+## Part 1
 
 Part 1 of this challenge began in chapter 8, which required that a program be written to evaluate a very basic machine language code. The machine language syntax is a 4 digit number, where the leading two digits describe the operation and the trailing two digits describe the location in memory of which to run the operation against.
 
@@ -32,7 +32,7 @@ Take the following program as an example, which reads two numbers from the keybo
 |09             | +0000         |Result C      |
 
 
-##Part 2
+## Part 2
 
 Part 2 of this challenge continues in chapter 20, and is an extension to the above challenge. This program evaluates a basic high-level language called Simple (similar to early versions of the language BASIC), converts it to Simple machine language (SML) code, and then executes the SML code.
 
@@ -94,7 +94,7 @@ The program will then generate SML code based on the Simple input. Once the SML 
 
 PDF of the Simple language chapter problem [here](http://www.deitel.com/bookresources/cpphtp7/CompilerExercise.pdf).
 
-##Limitations
+## Limitations
 
 The buffer size of this compiler is only 100 elements. Notice how much more SML code was created in response to the Simple code. This means that the compiler could run out of memory if the submitted Simple program is too large or contains many complex arithmetic statements. 
 
